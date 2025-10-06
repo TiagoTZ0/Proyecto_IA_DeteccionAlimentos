@@ -3,7 +3,7 @@
 Clasificador de alimentos basado en **MobileNetV2** con estimación de calorías por porción.  
 El modelo se entrena con el dataset **Food-101**, aplicando *Transfer Learning* y técnicas de normalización para reconocimiento visual de alimentos y cálculo nutricional estimado.
 
-Por el momento, se utiliza **MobileNetV3 Small** para entrenamiento rápido en CPU.
+Actualmente, se utiliza **MobileNetV3 Small** para entrenamiento rápido en CPU, mientras que **MobileNetV2** se empleará en la versión final por su mayor precisión.
 
 ---
 
@@ -26,21 +26,23 @@ breakfast_burrito 🌯     bruschetta 🍅🍞
 
 Food101-Calories/  
 │  
-├── src/  
-│   ├── train.py                # Entrenamiento del modelo (MobileNetV2 o MobileNetV3 Small)  
-│   ├── predict.py              # Predicción e inferencia  
-│   ├── utils.py                # Funciones auxiliares y carga del dataset  
-│   ├── model/                  # Carpeta para guardar modelos .pth  
-│   └── __init__.py  
-│  
 ├── data/  
-│   ├── food-101/               # Dataset con imágenes e índices meta/  
-│   └── nutrition_info.csv      # Información nutricional por clase (kcal)  
+│   ├── food-101/                # Dataset original con imágenes y archivos meta  
+│   └── imagenes_propias/        # Carpeta para pruebas o imágenes adicionales  
 │  
-├── app.py                      # Interfaz Streamlit  
-├── requirements.txt  
-├── README.md  
-└── .gitignore  
+├── models/  
+│   ├── calories.json            # Calorías por clase (kcal/100g)  
+│   ├── food101_classes.npy      # Nombres de las clases  
+│   └── food101_torch.pth        # Modelo entrenado  
+│  
+├── src/                         # Scripts de entrenamiento y utilidades  
+│   ├── predict.py               # Clasificación de imágenes alimenticias
+│   └── train.py                 # Entrenamiento del modelo neuronal
+│   └── utils.py                 # Funciones auxiliares del proyecto
+├── app.py                       # Interfaz Streamlit  
+├── config.py                    # Configuración general del proyecto  
+├── README.md                    # Documentación del proyecto  
+└── .gitignore                   # Archivos a ignorar por Git  
 
 ---
 
@@ -61,16 +63,23 @@ pip install torch torchvision pillow numpy pandas streamlit
 
 ## 🧠 Entrenamiento del Modelo
 
-1. Descarga y extrae **Food-101** en la ruta:
-D:\Datasets\food-101
-├── images\ (101 carpetas de clases)
-└── meta\train.txt, test.txt, classes.txt
+1. **Descarga y extrae el dataset Food-101** dentro de la carpeta del proyecto:
 
-2. Ejecuta el entrenamiento desde la terminal de VS Code:
-python src/train.py --root "D:\Datasets" --epochs 10 --batch-size 16 --freeze-base
+Food101-Calories/
+├── data/
+│ └── food-101/
+│ ├── images/ # 101 carpetas de clases
+│ └── meta/ # train.txt, test.txt, classes.txt
 
-3. El modelo entrenado se guardará como:
-src/model/food101_mobilenetv2.pth
+2. **Ejecuta el entrenamiento desde la terminal de VS Code:**
+
+python src/train.py --root "data/food-101" --epochs 10 --batch-size 16 --freeze-base
+
+*(Asegúrate de ejecutar el comando desde la carpeta raíz del proyecto, por ejemplo `Food101-Calories/`)*
+
+3. **El modelo entrenado se guardará automáticamente como:**
+
+models/food101_torch.pth
 
 ---
 
@@ -78,7 +87,7 @@ src/model/food101_mobilenetv2.pth
 
 Ejemplo de inferencia:
 
-python src/predict.py --image "data/test/pasta.jpg"
+python src/predict.py --image "data/imagenes_propias/pasta.jpg"
 
 Salida esperada:
 
@@ -106,6 +115,7 @@ La aplicación permite:
 ## ⚡ Entrenamiento Rápido (para pruebas)
 
 Si deseas entrenar más rápido en CPU:
+
 python src/train.py --epochs 3 --batch-size 8 --limit-classes 20 --freeze-base
 
 (Esto entrena solo con 20 clases y menos imágenes por clase para validar el pipeline de entrenamiento.)
@@ -114,8 +124,8 @@ python src/train.py --epochs 3 --batch-size 8 --limit-classes 20 --freeze-base
 
 ## 📊 Modelo
 
-- **Arquitectura:** MobileNetV2 (preentrenada en ImageNet)  
-- **Versión rápida:** MobileNetV3 Small (para CPU o pruebas cortas)  
+- **Arquitectura principal:** MobileNetV2 (preentrenada en ImageNet)  
+- **Versión de prueba:** MobileNetV3 Small (para CPU y entrenamientos rápidos)  
 - **Método:** Transfer Learning  
 - **Capas finales ajustadas:** Linear (1280 → 101 clases)  
 - **Optimización:** Adam (lr = 1e-4)  
@@ -127,19 +137,24 @@ python src/train.py --epochs 3 --batch-size 8 --limit-classes 20 --freeze-base
 ## 🚀 Pasos para Ejecutar el Proyecto Completo
 
 1. **Instalar dependencias**
+
 pip install -r requirements.txt
 
-2. **Descargar y extraer el dataset Food-101** en la carpeta `data/`.
+2. **Descargar y extraer el dataset Food-101** en `data/food-101/`.
 
 3. **Entrenar el modelo**
 - Entrenamiento rápido (20 clases):
-  python src/train.py --epochs 3 --batch-size 8 --limit-classes 20 --freeze-base
-- Entrenamiento completo (101 clases):
-  python src/train.py --epochs 10 --batch-size 16 --freeze-base
 
-4. **Verificar que el modelo entrenado (.pth)** esté en `src/model/`.
+python src/train.py --epochs 3 --batch-size 8 --limit-classes 20 --freeze-base
+
+- Entrenamiento completo (101 clases):
+
+python src/train.py --epochs 10 --batch-size 16 --freeze-base
+
+4. **Verificar que el modelo entrenado (.pth)** esté en `models/`.
 
 5. **Ejecutar la aplicación**
+
 streamlit run app.py
 
 6. **Subir una imagen de un alimento** (por ahora, alguno de los 20 entrenados).  
