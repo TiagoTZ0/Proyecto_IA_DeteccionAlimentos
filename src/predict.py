@@ -43,10 +43,62 @@ def main(args):
     for i, idx in enumerate(top3, 1):
         print(f"{i}. {labels[idx]} — {probs[idx]*100:.2f}%")
 
-    # Calorías
-    cal_map = json.loads(Path(config.CALORIES_JSON).read_text(encoding="utf-8"))
+# --- Calorías robusto ---
+    #cal_map_raw = json.loads(Path(config.CALORIES_JSON).read_text(encoding="utf-8"))
+
+    #def _norm(s: str) -> str:
+        #return s.strip().lower().replace('_', ' ')
+
+# --- Calorías robusto + diagnóstico ---
+from typing import Any
+
+def _norm(s: Any) -> str:
+    return str(s).strip().lower().replace('_', ' ').replace('-', ' ')
+
+# Cargar JSON (tal cual) y también una versión normalizada
+raw_json = json.loads(Path(config.CALORIES_JSON).read_text(encoding="utf-8"))
+cal_map_norm = {_norm(k): float(v) for k, v in raw_json.items()}
+
+# Label Top-1, asegurando str (no bytes/np scalar)
+raw_label = labels[int(top3[0])]
+label = raw_label.decode("utf-8") if isinstance(raw_label, (bytes, bytearray)) else str(raw_label)
+label_norm = _norm(label)
+
+# Candidatos de búsqueda (sin romper tu archivo)
+candidates = [
+    label,                      # p.ej. "apple_pie"
+    label.replace('_', ' '),    # "apple pie"
+    label.replace('_', '-'),    # "apple-pie"
+    label.lower(),              # "apple_pie" en minúsculas
+]
+
+kcal_100 = 0.0
+# 1) Búsqueda exacta en el JSON crudo
+for key in candidates:
+    if key in raw_json:
+        kcal_100 = float(raw_json[key])
+        break
+
+# 2) Si no, búsqueda normalizada
+if kcal_100 == 0.0 and label_norm in cal_map_norm:
+    kcal_100 = float(cal_map_norm[label_norm])
+
+# 3) Diagnóstico si sigue en 0 (para ver por qué)
+if kcal_100 == 0.0:
+    print("[DEBUG] kcal no encontradas.")
+    print(f"[DEBUG] label raw   : {label!r}")
+    print(f"[DEBUG] label norm  : {label_norm!r}")
+    some_keys = list(raw_json.keys())[:8]
+    print(f"[DEBUG] algunas claves JSON: {some_keys}")
+
+
+
+# normalizamos las claves del json para evitar problemas de mayúsculas/guiones
+    cal_map = {_norm(k): float(v) for k, v in cal_map_raw.items()}
+
     top_class = labels[int(top3[0])]
-    kcal_100 = float(cal_map.get(top_class, 0))
+    kcal_100 = float(cal_map.get(_norm(top_class), 0))
+
     if args.grams and kcal_100 > 0:
         kcal = (args.grams / 100.0) * kcal_100
         print(f"\nClase: {top_class} | kcal/100g: {kcal_100:.0f} | gramos: {args.grams} → kcal estimadas: {kcal:.0f}")
