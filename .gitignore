@@ -23,12 +23,19 @@ venv/
 *.tmp
 
 # ======================
-# NUEVO: IGNORAR CONTENIDO DE DATA/
+# IGNORAR CONTENIDO DE DATA/
 # ======================
 data/*
 !data/.gitkeep
 
 # ======================
-# NUEVO: IGNORAR MODELOS/
+# IGNORAR MODELOS/
 # ======================
 models/
+
+# ======================
+# IGNORAR RESULTADOS DE VALIDACIÓN CRUZADA
+# ======================
+cross_validation/results/*
+!cross_validation/notes.md
+!cross_validation/train_kfold.py

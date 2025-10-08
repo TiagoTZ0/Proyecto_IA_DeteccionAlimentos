@@ -25,17 +25,38 @@ st.set_page_config(page_title="Food-101 Calories", page_icon="🍽️", layout="
 def load_labels():
     return list(np.load(config.CLASSES_PATH, allow_pickle=True))
 
-@st.cache_resource
-def load_calories():
-    if not Path(config.CALORIES_JSON).exists():
-        Path(config.CALORIES_JSON).write_text(json.dumps({}, indent=2), encoding="utf-8")
-    return json.loads(Path(config.CALORIES_JSON).read_text(encoding="utf-8"))
+# --- helpers para calorías (NUEVO) ---
+def _norm(s: str) -> str:
+    return s.strip().lower().replace('_', ' ').replace('-', ' ')
+
+@st.cache_data(show_spinner=False)
+def load_calories() -> dict:
+    """Lee calories.json y devuelve un dict con claves normalizadas."""
+    p = Path(config.CALORIES_JSON)
+    if not p.exists():
+        p.write_text("{}", encoding="utf-8")
+    raw = json.loads(p.read_text(encoding="utf-8"))
+    return {_norm(k): float(v) for k, v in raw.items()}
+
+def kcal_lookup(label: str, cal_map: dict) -> float:
+    """Busca kcal probando variantes de la etiqueta para evitar mismatches."""
+    cands = [
+        label,
+        label.lower(),
+        label.replace('_', ' '),
+        label.replace('_', '-'),
+    ]
+    for c in cands:
+        v = cal_map.get(_norm(c))
+        if v is not None and v > 0:
+            return float(v)
+    return 0.0
 
 @st.cache_resource
 def load_model(n_classes: int):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    # Modelo ligero para CPU
+    # Modelo ligero para CPU (debe coincidir con tu entrenamiento)
     model = models.mobilenet_v3_small(weights=models.MobileNet_V3_Small_Weights.IMAGENET1K_V1)
     in_feat = model.classifier[3].in_features
     model.classifier[3] = nn.Linear(in_feat, n_classes)
@@ -121,7 +142,9 @@ elif menu == "🍲 Clasificador de Alimentos":
         top_class = labels[top_idx]
         top_prob = float(probs[top_idx])
 
-        kcal_100 = float(cal_map.get(top_class, 0))
+        # >>> calcular kcal_100 SIEMPRE dentro del if uploaded <<<
+        kcal_100 = kcal_lookup(top_class, cal_map)
+
         with c2:
             st.subheader("Resultado")
             st.write(f"**Clase predicha:** {top_class}")
@@ -137,7 +160,8 @@ elif menu == "🍲 Clasificador de Alimentos":
             for i, idx in enumerate(top3, 1):
                 st.write(f"{i}. {labels[idx]} — {probs[idx]:.2%}")
 
-            st.info(f"Si {top_class} muestra 0 kcal, edita {config.CALORIES_JSON} para agregar su valor correspondiente.")
+            if kcal_100 <= 0:
+                st.info(f"Si `{top_class}` muestra 0 kcal, edita `{config.CALORIES_JSON}` para agregar su valor correspondiente.")
     else:
         st.info("Carga una imagen para comenzar.")
 
