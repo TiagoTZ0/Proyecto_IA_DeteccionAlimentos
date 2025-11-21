@@ -1,35 +1,37 @@
-# 🍱 Food-101 – Detección de Alimentos y Calorías
+# 🍎 Food & Fruits AI – Clasificador de Alimentos y Calorías
 
-Clasificador de alimentos basado en **MobileNetV2** con estimación de calorías por porción.  
-El modelo se entrena con el dataset **Food-101**, aplicando *Transfer Learning* y técnicas de normalización para el reconocimiento visual de alimentos y el cálculo nutricional estimado.
+> **Sistema inteligente de reconocimiento visual de platos de comida y frutas, con estimación nutricional en tiempo real.**
 
-Actualmente, se utiliza **MobileNetV3 Small** para entrenamientos rápidos en CPU, mientras que **MobileNetV2** se empleará en la versión final por su mayor precisión y estabilidad.
-
----
-
-## 🧠 Descripción General
-
-El objetivo del proyecto es desarrollar un sistema de Inteligencia Artificial capaz de **reconocer alimentos a partir de imágenes** y **estimar su valor calórico promedio por porción**.  
-El modelo fue implementado en **Python (PyTorch)** para el entrenamiento y **Streamlit** para la interfaz de usuario.
+Este proyecto implementa un modelo de **Deep Learning** basado en la arquitectura **MobileNetV2**, entrenado mediante *Transfer Learning* sobre un dataset híbrido personalizado. La aplicación final permite a los usuarios subir fotos de sus comidas, identificar qué son y calcular las calorías totales según el peso de la porción.
 
 ---
 
-## 🍽️ Subconjunto de Clases (versión actual)
+## 🧠 Descripción Técnica
 
-Durante la fase de validación en CPU, se trabajó con un subconjunto de **20 clases representativas** del dataset Food-101 para optimizar los tiempos de entrenamiento y pruebas:
+El núcleo del proyecto es una Red Neuronal Convolucional (CNN) optimizada para inferencia rápida (incluso en CPU).
 
-apple_pie 🍎🥧  caesar_salad 🥬  
-baby_back_ribs 🍖  cannoli 🍰  
-baklava 🍯  caprese_salad 🍅🧀  
-beef_carpaccio 🥩  carrot_cake 🎂  
-beef_tartare 🥩  ceviche 🐟🍋  
-beet_salad 🥗  cheese_plate 🧀  
-beignets 🍩  cheesecake 🍰  
-bibimbap 🍚  chicken_curry 🍛  
-bread_pudding 🍞  chicken_quesadilla 🌮  
-breakfast_burrito 🌯  bruschetta 🍅🍞  
+* **Modelo Base:** `MobileNetV2` (Preentrenado en ImageNet).
+* **Técnica:** *Full Fine-Tuning* (Reentrenamiento de capas profundas y clasificador).
+* **Dataset:** Fusión personalizada de **Food-101** (Platos preparados) + **Fruits-262** (Selección de 51 frutas y verduras).
+* **Frameworks:** PyTorch (Entrenamiento) y Streamlit (Despliegue Web).
 
-Cada clase contiene aproximadamente **750 imágenes de entrenamiento** y **250 de prueba**.
+---
+
+## 🍽️ Dataset Híbrido (Food + Fruits)
+
+El modelo ha sido entrenado para reconocer aproximadamente **152 clases distintas**, combinando una amplia variedad de platos cocinados con una selección de frutas frescas.
+
+### 1. Platos Preparados (Food-101)
+Incluye 101 categorías de comida internacional, tales como:
+* `Pizza`, `Sushi`, `Hamburguesa`, `Tacos`, `Ramen`, `Paella`, `Lasagna`, `Ceviche`, `Steak`, `Risotto`, entre otros.
+
+### 2. Frutas y Verduras (Subconjunto Fruits-262)
+Se integraron **51 clases específicas** seleccionadas del dataset Fruits-262, abarcando desde frutas de consumo diario hasta variedades exóticas y verduras comunes en la cocina.
+
+**Algunas de las clases incluidas:**
+* **Frutas Comunes:** Manzana, Plátano, Naranja, Mandarina, Fresa, Uva, Piña, Sandía, Durazno, Limón.
+* **Frutas Exóticas/Tropicales:** Maracuyá, Pitahaya (Dragonfruit), Lúcuma, Aguaje, Chirimoya, Granadilla, Carambola, Coco.
+* **Vegetales/Frutos:** Tomate, Palta (Avocado), Pimiento, Maíz, Zapallo, Berenjena.
 
 ---
 
@@ -38,187 +40,99 @@ Cada clase contiene aproximadamente **750 imágenes de entrenamiento** y **250 d
 Food101-Calories/
 │
 ├── data/
-│ ├── food-101/
-│ │ ├── images/
-│ │ └── meta/
-│ └── imagenes_propias/
+│   └── food-101_fruits-262/
+│       └── images/          # Carpeta UNIFICADA con las 152 clases
 │
 ├── models/
-│ ├── calories.json       ##Se generan a partir del entrenamiento
-│ ├── food101_classes.npy
-│ └── food101_torch.pth
+│   ├── calories.json        # Base de datos nutricional (kcal/100g)
+│   ├── food101_classes.npy  # Archivo generado con los nombres de las clases
+│   └── food101_torch.pth    # Pesos del modelo entrenado (MobileNetV2)
 │
-├── src/ # Scripts de entrenamiento y utilidades
-│ ├── predict.py # Clasificación de imágenes alimenticias
-│ ├── train.py # El script principal de entrenamiento
-│ └── utils.py # Funciones auxiliares del proyecto
+├── src/
+│   ├── app.py               # Aplicación Web (Streamlit)
+│   ├── train.py             # Script de entrenamiento principal
+│   ├── predict.py           # Script para pruebas rápidas por consola
+│   └── utils.py             # Procesamiento de datos y carga dinámica
 │
-├── cross_validation/ # Carpeta de validación cruzada
-│ ├── notes.md # Notas relacionadas a la validación cruzada
-│ └── train_kfold.py # Script de entrenamiento específico para K-Fold
-│
-├── app.py # Interfaz Streamlit 
-├── config.py # Configuración general del proyecto
-├── README.md # Documentación del proyecto
-├── .gitignore # Archivos a ignorar por Git
-└── requirements.txt # Dependencias Necesarias
----
-
-
-## ⚙️ Requisitos del Sistema
-
-- **Python 3.12 o superior**  
-- **Visual Studio Code** con extensiones:
-  - Python  
-  - Streamlit  
-
-Instalación de librerías necesarias:
-
-
-*(Para CPU no se necesita CUDA; MobileNetV3 Small está optimizada para entrenamientos ligeros.)*
+├── config.py                # Variables globales
+├── requirements.txt         # Librerías necesarias
+└── README.md                # Documentación
 
 ---
 
-## 🧩 Entrenamiento del Modelo
+## ⚙️ Instalación y Requisitos
 
-1. **Descargar y extraer el dataset Food-101** dentro de la carpeta del proyecto:
+1.  **Clonar el repositorio o descargar el código.**
+2.  **Crear un entorno virtual (opcional pero recomendado):**
+    # En Windows:
+    python -m venv venv
+    venv\Scripts\activate
+    
+    # En Mac/Linux:
+    python3 -m venv venv
+    source venv/bin/activate
 
-Food101-Calories/data/food-101/
-├── images/ # 101 carpetas de clases
-└── meta/ # Archivos train.txt, test.txt, classes.txt
-
-2. **Ejecutar el entrenamiento desde la terminal:**
-
-python src/train.py --root "data/food-101" --epochs 10 --batch-size 16 --freeze-base
-
-3. **El modelo entrenado se guardará automáticamente en:**
-
-models/food101_torch.pth
-
----
-
-## ⚡ Entrenamiento Rápido (para pruebas)
-
-Si deseas entrenar más rápido en CPU:
-
-python src/train.py --epochs 3 --batch-size 8 --limit-classes 20 --freeze-base
-
-*(Esto entrena solo con 20 clases y menos imágenes por clase para validar el pipeline de entrenamiento.)*
+3.  **Instalar dependencias:**
+    pip install -r requirements.txt
 
 ---
 
-## 🔁 Validación Cruzada (Cross-Validation)
+## 🚀 Entrenamiento del Modelo
 
-Para evaluar la capacidad de generalización, se utilizó **K-Fold Cross-Validation (K = 3)**.  
-Cada fold se entrenó durante **2 épocas** con **batch size = 8**, optimizador **AdamW** y **CrossEntropyLoss**.
+El sistema escanea automáticamente la carpeta `data/food-101_fruits-262/images` y se adapta a la cantidad de clases que encuentre.
 
-Los modelos generados se almacenan en:
+**Para iniciar el entrenamiento:**
 
-cross_validation/results/
-├── fold_1_best.pth
-├── fold_2_best.pth
-├── fold_3_best.pth
-└── summary.json
+python src/train.py --epochs 25 --batch-size 16
 
-**Resultados obtenidos:**
+> **Nota:** Si tu equipo no tiene GPU dedicada, el script detectará CPU automáticamente. Si tienes poca memoria RAM, reduce el batch size a 8.
 
-| Fold | Pérdida de Validación | Precisión Top-1 (%) | Precisión Top-5 (%) |
-|------|------------------------|---------------------|---------------------|
-| 1    | 1.6924                 | 53.80              | 88.25              |
-| 2    | 1.6725                 | 50.85              | 85.35              |
-| 3    | 1.6949                 | 55.95              | 86.50              |
-| **Promedio ± Desv.Est.** | — | **53.53 ± 2.09** | — |
-
-📊 Los resultados demuestran un comportamiento estable del modelo entre los diferentes folds, validando su robustez incluso en CPU.
+Al finalizar, se generarán automáticamente en la carpeta `models/`:
+* `food101_torch.pth` (El cerebro de la IA).
+* `food101_classes.npy` (La lista de etiquetas).
+* `calories.json` (Plantilla de calorías actualizada).
 
 ---
 
-## 🔍 Predicción por Consola
+## 💻 Ejecución de la Aplicación (Demo)
 
-Ejemplo de inferencia:
+Una vez entrenado el modelo, lanza la interfaz gráfica:
 
-python src/predict.py --image "data/imagenes_propias/pasta.jpg"
+streamlit run src/app.py
 
-**Salida esperada:**
-
-Predicción: spaghetti_bolognese (Top-1)
-Probabilidad: 0.89
-Calorías estimadas: 435 kcal por porción
-
----
-
-## 💻 Interfaz con Streamlit
-
-Ejecuta la interfaz gráfica con:
-
-streamlit run app.py
-
-
-La aplicación permite:
-- Subir una imagen de un alimento  
-- Ver el nombre de la comida detectada  
-- Mostrar las calorías estimadas por 100 g  
-- Ajustar los gramos para calcular el valor total  
-- Visualizar la probabilidad de clasificación  
+### Funcionalidades de la App:
+1.  **📸 Reconocimiento Visual:** Sube cualquier imagen (JPG/PNG).
+2.  **📊 Probabilidades:** Muestra la confianza del modelo y el Top-3 de posibles resultados.
+3.  **🔥 Calculadora Nutricional:**
+    * Detecta el alimento.
+    * Consulta la base de datos `calories.json`.
+    * Permite ajustar el peso con un *slider* para calcular el total calórico estimado de la porción.
 
 ---
 
-## 📊 Modelo
+## 🛠️ Tecnologías Utilizadas
 
-- **Arquitectura principal:** MobileNetV2 (preentrenada en ImageNet)  
-- **Versión de prueba:** MobileNetV3 Small (para CPU y pruebas rápidas)  
-- **Método:** Transfer Learning  
-- **Capas finales:** Linear (1280 → N clases)  
-- **Optimización:** AdamW (lr = 3e-4, weight_decay = 1e-4)  
-- **Pérdida:** CrossEntropyLoss  
-- **Transformaciones:** Normalización y *data augmentation*  
-
----
-
-## 🚀 Pasos para Ejecutar el Proyecto Completo
-
-1. **Instalar dependencias**
-
-pip install -r requirements.txt
-
-2. **Descargar y extraer el dataset Food-101** en `data/food-101/`
-
-3. **Entrenar el modelo**
-
-- Entrenamiento rápido (20 clases):
-
-python src/train.py --epochs 3 --batch-size 8 --limit-classes 20 --freeze-base
-
-- Entrenamiento completo (101 clases):
-python src/train.py --epochs 10 --batch-size 16 --freeze-base
-
-4. **Validar el modelo (K-Fold Cross Validation)**  
-python cross_validation/train_kfold.py
-
-5. **Ejecutar la aplicación**
-streamlit run app.py
-
-
-6. **Subir una imagen y visualizar resultados:**
-- Clase detectada  
-- Probabilidad  
-- Calorías estimadas  
+* **Lenguaje:** Python 3.9+
+* **Deep Learning:** PyTorch, Torchvision.
+* **Arquitectura:** MobileNetV2 (Eficiente y liviana).
+* **Interfaz:** Streamlit.
+* **Procesamiento de Datos:** Pandas, NumPy, Pillow.
 
 ---
 
 ## 🧠 Créditos
 
-Proyecto desarrollado como parte del curso de **Inteligencia Artificial: Principios y Técnicas**  
+Proyecto desarrollado para el curso de **Inteligencia Artificial: Principios y Técnicas**.  
 **Universidad Privada Antenor Orrego (UPAO) – Facultad de Ingeniería**
 
-**Autores:**  
-- Trigoso Zárate, Tiago André  
-- Velásquez Góngora, Bruno Martín  
-- Correa Asencio, Damer  
-
+**Equipo de Desarrollo:**
+* Trigoso Zárate, Tiago André
+* Velásquez Góngora, Bruno Martín
+* Correa Asencio, Damer
+* Chavez, Jhon
+* Vergara Lopez, Junior
 ---
 
 ## 🛡️ Licencia
 
-Uso educativo y de investigación.  
-Basado parcialmente en el dataset público **Food-101**.
+Este proyecto utiliza subconjuntos de los datasets públicos **Food-101** y **Fruits-262** con fines académicos y de investigación.
