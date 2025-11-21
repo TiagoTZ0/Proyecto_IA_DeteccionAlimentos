@@ -57,7 +57,7 @@ Food101-Calories/
 │ ├── notes.md # Notas relacionadas a la validación cruzada
 │ └── train_kfold.py # Script de entrenamiento específico para K-Fold
 │
-├── app.py # Interfaz Streamlit
+├── app.py # Interfaz Streamlit 
 ├── config.py # Configuración general del proyecto
 ├── README.md # Documentación del proyecto
 ├── .gitignore # Archivos a ignorar por Git

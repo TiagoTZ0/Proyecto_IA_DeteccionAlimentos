@@ -1,4 +1,5 @@
-import argparse, json
+import argparse
+import json
 from pathlib import Path
 import numpy as np
 from PIL import Image
@@ -7,8 +8,11 @@ import torch
 import torch.nn as nn
 from torchvision import models, transforms
 
+# Aseguramos que el script encuentre config y utils
+import sys
+sys.path.append(str(Path(__file__).parent.parent))
 import config
-from src.utils import load_labels, softmax_np
+from src.utils import load_labels
 
 def get_eval_tfms():
     return transforms.Compose([
@@ -18,96 +22,86 @@ def get_eval_tfms():
     ])
 
 def load_model(n_classes: int, device):
-    model = models.mobilenet_v2(weights=models.MobileNet_V2_Weights.IMAGENET1K_V1)
+    print(f"⏳ Cargando MobileNetV2 para {n_classes} clases...")
+    model = models.mobilenet_v2(weights=None)
     in_feat = model.classifier[1].in_features
     model.classifier[1] = nn.Linear(in_feat, n_classes)
+    
     ckpt = torch.load(config.MODEL_PATH, map_location=device)
-    model.load_state_dict(ckpt["state_dict"])
+    if "state_dict" in ckpt:
+        model.load_state_dict(ckpt["state_dict"])
+    else:
+        model.load_state_dict(ckpt)
+        
     model.eval().to(device)
     return model
 
+def softmax_np(x):
+    x = x - np.max(x)
+    e = np.exp(x)
+    return e / e.sum()
+
+def _norm(s):
+    return str(s).strip().lower().replace('_', ' ').replace('-', ' ')
+
 def main(args):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    labels = load_labels()
+    
+    # 1. Cargar Labels
+    labels = load_labels(config.CLASSES_PATH)
+    
+    # 2. Cargar Modelo
     model = load_model(len(labels), device)
     tfm = get_eval_tfms()
 
-    img = Image.open(args.image).convert("RGB")
+    # 3. Predecir
+    img_path = Path(args.image)
+    if not img_path.exists():
+        print(f"❌ Error: No existe la imagen {img_path}")
+        return
+
+    img = Image.open(img_path).convert("RGB")
     x = tfm(img).unsqueeze(0).to(device)
+    
     with torch.no_grad():
         logits = model(x).cpu().numpy().squeeze()
+    
     probs = softmax_np(logits)
     top3 = np.argsort(-probs)[:3]
 
-    print("Top-3 predicciones:")
-    for i, idx in enumerate(top3, 1):
-        print(f"{i}. {labels[idx]} — {probs[idx]*100:.2f}%")
+    # 4. Cargar Calorías
+    cal_map = {}
+    if Path(config.CALORIES_JSON).exists():
+        raw = json.loads(Path(config.CALORIES_JSON).read_text(encoding="utf-8"))
+        cal_map = {_norm(k): float(v) for k, v in raw.items()}
 
-# --- Calorías robusto ---
-    #cal_map_raw = json.loads(Path(config.CALORIES_JSON).read_text(encoding="utf-8"))
-
-    #def _norm(s: str) -> str:
-        #return s.strip().lower().replace('_', ' ')
-
-# --- Calorías robusto + diagnóstico ---
-from typing import Any
-
-def _norm(s: Any) -> str:
-    return str(s).strip().lower().replace('_', ' ').replace('-', ' ')
-
-# Cargar JSON (tal cual) y también una versión normalizada
-raw_json = json.loads(Path(config.CALORIES_JSON).read_text(encoding="utf-8"))
-cal_map_norm = {_norm(k): float(v) for k, v in raw_json.items()}
-
-# Label Top-1, asegurando str (no bytes/np scalar)
-raw_label = labels[int(top3[0])]
-label = raw_label.decode("utf-8") if isinstance(raw_label, (bytes, bytearray)) else str(raw_label)
-label_norm = _norm(label)
-
-# Candidatos de búsqueda (sin romper tu archivo)
-candidates = [
-    label,                      # p.ej. "apple_pie"
-    label.replace('_', ' '),    # "apple pie"
-    label.replace('_', '-'),    # "apple-pie"
-    label.lower(),              # "apple_pie" en minúsculas
-]
-
-kcal_100 = 0.0
-# 1) Búsqueda exacta en el JSON crudo
-for key in candidates:
-    if key in raw_json:
-        kcal_100 = float(raw_json[key])
-        break
-
-# 2) Si no, búsqueda normalizada
-if kcal_100 == 0.0 and label_norm in cal_map_norm:
-    kcal_100 = float(cal_map_norm[label_norm])
-
-# 3) Diagnóstico si sigue en 0 (para ver por qué)
-if kcal_100 == 0.0:
-    print("[DEBUG] kcal no encontradas.")
-    print(f"[DEBUG] label raw   : {label!r}")
-    print(f"[DEBUG] label norm  : {label_norm!r}")
-    some_keys = list(raw_json.keys())[:8]
-    print(f"[DEBUG] algunas claves JSON: {some_keys}")
-
-
-
-# normalizamos las claves del json para evitar problemas de mayúsculas/guiones
-    cal_map = {_norm(k): float(v) for k, v in cal_map_raw.items()}
-
-    top_class = labels[int(top3[0])]
-    kcal_100 = float(cal_map.get(_norm(top_class), 0))
-
-    if args.grams and kcal_100 > 0:
-        kcal = (args.grams / 100.0) * kcal_100
-        print(f"\nClase: {top_class} | kcal/100g: {kcal_100:.0f} | gramos: {args.grams} → kcal estimadas: {kcal:.0f}")
+    print(f"\n🔍 Resultado para: {img_path.name}")
+    print("-" * 30)
+    
+    top_idx = top3[0]
+    top_class = labels[top_idx]
+    
+    # Buscar calorías
+    kcal_val = cal_map.get(_norm(top_class), 0.0)
+    
+    print(f"🏆 PREDICCIÓN: {top_class} ({probs[top_idx]*100:.1f}%)")
+    
+    if kcal_val > 0:
+        print(f"🔥 Calorías base: {kcal_val:.0f} kcal / 100g")
+        if args.grams:
+            total = (args.grams / 100) * kcal_val
+            print(f"⚖️  Para {args.grams}g: {total:.0f} kcal")
     else:
-        print(f"\nClase: {top_class} | kcal/100g: {kcal_100:.0f} (edita {config.CALORIES_JSON} para mejorar)")
+        print("⚠️  Calorías no disponibles en JSON.")
+
+    print("-" * 30)
+    print("Otras opciones probables:")
+    for i, idx in enumerate(top3[1:], 2):
+        print(f"{i}. {labels[idx]} ({probs[idx]*100:.1f}%)")
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
-    ap.add_argument("--image", type=str, required=True)
-    ap.add_argument("--grams", type=float, default=None)
+    ap.add_argument("--image", type=str, required=True, help="Ruta a la imagen")
+    ap.add_argument("--grams", type=float, default=None, help="Peso en gramos para calcular kcal")
     args = ap.parse_args()
     main(args)

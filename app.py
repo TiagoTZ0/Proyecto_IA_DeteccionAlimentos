@@ -11,43 +11,46 @@ from torchvision import models, transforms
 import config
 
 # -----------------------------------------------------------
-# CONFIGURACIÓN INICIAL
+# CONFIGURACIÓN
 # -----------------------------------------------------------
 sys.path.append(str((Path(__file__).parent / "src").resolve()))
-
-st.set_page_config(page_title="Food-101 Calories", page_icon="🍽️", layout="centered")
+st.set_page_config(page_title="Food & Fruits AI", page_icon="🍎", layout="centered")
 
 # -----------------------------------------------------------
-# FUNCIONES AUXILIARES
+# FUNCIONES
 # -----------------------------------------------------------
 
 @st.cache_resource
 def load_labels():
+    if not Path(config.CLASSES_PATH).exists():
+        return []
     return list(np.load(config.CLASSES_PATH, allow_pickle=True))
 
-# --- helpers para calorías (NUEVO) ---
 def _norm(s: str) -> str:
-    return s.strip().lower().replace('_', ' ').replace('-', ' ')
+    return str(s).strip().lower().replace('_', ' ').replace('-', ' ')
 
 @st.cache_data(show_spinner=False)
 def load_calories() -> dict:
-    """Lee calories.json y devuelve un dict con claves normalizadas."""
     p = Path(config.CALORIES_JSON)
     if not p.exists():
-        p.write_text("{}", encoding="utf-8")
+        return {}
     raw = json.loads(p.read_text(encoding="utf-8"))
     return {_norm(k): float(v) for k, v in raw.items()}
 
 def kcal_lookup(label: str, cal_map: dict) -> float:
-    """Busca kcal probando variantes de la etiqueta para evitar mismatches."""
+    # Busqueda robusta
     cands = [
         label,
         label.lower(),
         label.replace('_', ' '),
         label.replace('_', '-'),
+        _norm(label)
     ]
     for c in cands:
-        v = cal_map.get(_norm(c))
+        v = cal_map.get(c) # Buscar tal cual
+        if v is None: 
+            v = cal_map.get(_norm(c)) # Buscar normalizado
+        
         if v is not None and v > 0:
             return float(v)
     return 0.0
@@ -55,17 +58,21 @@ def kcal_lookup(label: str, cal_map: dict) -> float:
 @st.cache_resource
 def load_model(n_classes: int):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    
+    # --- CAMBIO A MOBILENET V2 ---
+    # No cargamos pesos de internet, cargaremos los nuestros
+    model = models.mobilenet_v2(weights=None) 
+    in_feat = model.classifier[1].in_features
+    model.classifier[1] = nn.Linear(in_feat, n_classes)
 
-    # Modelo ligero para CPU (debe coincidir con tu entrenamiento)
-    model = models.mobilenet_v3_small(weights=models.MobileNet_V3_Small_Weights.IMAGENET1K_V1)
-    in_feat = model.classifier[3].in_features
-    model.classifier[3] = nn.Linear(in_feat, n_classes)
-
-    ckpt = torch.load(config.MODEL_PATH, map_location=device)
-    if "state_dict" in ckpt:
-        model.load_state_dict(ckpt["state_dict"], strict=False)
+    if Path(config.MODEL_PATH).exists():
+        ckpt = torch.load(config.MODEL_PATH, map_location=device)
+        if "state_dict" in ckpt:
+            model.load_state_dict(ckpt["state_dict"], strict=False)
+        else:
+            model.load_state_dict(ckpt, strict=False)
     else:
-        model.load_state_dict(ckpt, strict=False)
+        st.error("⚠️ No se encontró el modelo entrenado (.pth). Ejecuta train.py primero.")
 
     model.eval().to(device)
     return model, device
@@ -83,117 +90,91 @@ def softmax_np(x):
     return e / e.sum()
 
 # -----------------------------------------------------------
-# CARGA DE MODELO Y DATOS
+# CARGA
 # -----------------------------------------------------------
 labels = load_labels()
 cal_map = load_calories()
-model, device = load_model(len(labels))
-tfm = get_eval_tfm()
+
+if len(labels) > 0:
+    model, device = load_model(len(labels))
+    tfm = get_eval_tfm()
+else:
+    st.warning("⚠️ No se encontraron etiquetas. Entrena el modelo primero.")
+    st.stop()
 
 # -----------------------------------------------------------
-# INTERFAZ PRINCIPAL CON SIDEBAR
+# UI
 # -----------------------------------------------------------
 menu = st.sidebar.radio(
     "Navegación",
-    ["🏠 Inicio", "🍲 Clasificador de Alimentos", "📋 Alimentos Detectables"]
+    ["🏠 Inicio", "🍎 Clasificador", "📋 Lista de Alimentos"]
 )
 
-# -----------------------------------------------------------
-# SECCIÓN 1: INICIO
-# -----------------------------------------------------------
 if menu == "🏠 Inicio":
-    st.title("🍽️ Food-101 Calories Recognition")
-    st.write("""
-    Bienvenido a **Food-101 Calories Recognition**, una aplicación desarrollada con **Python, PyTorch y Streamlit**
-    que permite reconocer alimentos e inferir su valor calórico estimado.
+    st.title("🍎 Food & Fruits AI Recognition")
+    st.write(f"""
+    Bienvenido. Este modelo ha sido actualizado para reconocer **{len(labels)} clases** diferentes, 
+    incluyendo platos peruanos, internacionales y una gran variedad de frutas.
 
-    ### 🔍 ¿Qué hace esta IA?
-    - Detecta el tipo de alimento a partir de una imagen.
-    - Calcula la probabilidad de acierto.
-    - Muestra las **calorías estimadas por porción (100 g)** y permite ajustar el peso.
-    
-    ### 🧠 Tecnología
-    - **Modelo:** MobileNetV3 Small (versión ligera para CPU)
-    - **Dataset:** Subconjunto del *Food-101* (20 clases)
-    - **Método:** *Transfer Learning* sobre arquitectura preentrenada en ImageNet.
-
-    Puedes comenzar la detección en la pestaña **🍲 Clasificador de Alimentos**.
+    ### 🚀 Novedades MobileNetV2
+    - Arquitectura más robusta.
+    - Dataset expandido (Fruits-262 + Food-101).
+    - Sistema de calorías integrado.
     """)
 
-# -----------------------------------------------------------
-# SECCIÓN 2: CLASIFICADOR
-# -----------------------------------------------------------
-elif menu == "🍲 Clasificador de Alimentos":
-    st.title("🍲 Clasificador de Alimentos + Calorías (Food-101)")
-    st.write("Sube una imagen y obtendrás la predicción del alimento y su valor calórico estimado.")
-
-    uploaded = st.file_uploader("Sube una imagen (JPG/PNG)", type=["jpg", "jpeg", "png"])
+elif menu == "🍎 Clasificador":
+    st.title("📸 Clasificador Inteligente")
+    uploaded = st.file_uploader("Sube una foto...", type=["jpg", "jpeg", "png"])
+    
     c1, c2 = st.columns([1, 1])
-
+    
     if uploaded:
         image = Image.open(io.BytesIO(uploaded.read())).convert("RGB")
-        c1.image(image, caption="Imagen cargada", use_container_width=True)
+        c1.image(image, caption="Tu foto", use_container_width=True)
 
+        # Predicción
         x = tfm(image).unsqueeze(0).to(device)
         with torch.no_grad():
             logits = model(x).cpu().numpy().squeeze()
         probs = softmax_np(logits)
+        
+        # Top 1
         top_idx = int(np.argmax(probs))
         top_class = labels[top_idx]
         top_prob = float(probs[top_idx])
-
-        # >>> calcular kcal_100 SIEMPRE dentro del if uploaded <<<
+        
         kcal_100 = kcal_lookup(top_class, cal_map)
 
         with c2:
             st.subheader("Resultado")
-            st.write(f"**Clase predicha:** {top_class}")
-            st.write(f"**Confianza:** {top_prob:.2%}")
-            st.write(f"**kcal por 100 g (tabla):** {kcal_100:.0f}")
+            st.success(f"**{top_class.replace('_', ' ').title()}**")
+            st.write(f"Confianza: **{top_prob:.2%}**")
+            
+            if kcal_100 > 0:
+                st.info(f"🔥 **{kcal_100:.0f} kcal** / 100g")
+                gramos = st.slider("Peso (g):", 10, 500, 150, 10)
+                total_kcal = (gramos/100)*kcal_100
+                st.metric("Total Calorías", f"{total_kcal:.0f}")
+            else:
+                st.warning("⚠️ Calorías no registradas en calories.json")
 
-            gramos = st.slider("Gramos consumidos", min_value=10, max_value=500, value=150, step=10)
-            kcal = (gramos / 100.0) * kcal_100 if kcal_100 > 0 else 0.0
-            st.metric("Calorías estimadas", f"{kcal:.0f} kcal")
-
-            st.write("**Top-3 predicciones:**")
+            st.write("---")
+            st.write("**Otras posibilidades:**")
             top3 = np.argsort(-probs)[:3]
-            for i, idx in enumerate(top3, 1):
-                st.write(f"{i}. {labels[idx]} — {probs[idx]:.2%}")
+            for i, idx in enumerate(top3):
+                p_val = probs[idx]
+                if p_val > 0.01: # Solo mostrar si tiene > 1%
+                    st.caption(f"{labels[idx]} ({p_val:.1%})")
 
-            if kcal_100 <= 0:
-                st.info(f"Si `{top_class}` muestra 0 kcal, edita `{config.CALORIES_JSON}` para agregar su valor correspondiente.")
-    else:
-        st.info("Carga una imagen para comenzar.")
-
-# -----------------------------------------------------------
-# SECCIÓN 3: ALIMENTOS DETECTABLES
-# -----------------------------------------------------------
-elif menu == "📋 Alimentos Detectables":
-    st.title("📋 Alimentos que puede reconocer el modelo")
-    st.write("""
-    Este modelo ha sido entrenado con un **subconjunto de 20 clases** del dataset *Food-101* 
-    para permitir entrenamientos rápidos en CPU.  
-    En la versión final con MobileNetV2, se incluirán las 101 clases completas.
-    """)
-
-    subset_classes = [
-        "apple_pie", "baby_back_ribs", "baklava", "beef_carpaccio", "beef_tartare",
-        "beet_salad", "beignets", "bibimbap", "bread_pudding", "breakfast_burrito",
-        "bruschetta", "caesar_salad", "cannoli", "caprese_salad", "carrot_cake",
-        "ceviche", "cheesecake", "cheese_plate", "chicken_curry", "chicken_quesadilla"
-    ]
-
-    st.write("### 🍱 Clases detectables actualmente:")
-    for food in subset_classes:
-        kcal = cal_map.get(food, 0)
-        st.write(f"- **{food.replace('_', ' ').title()}** — {kcal if kcal > 0 else '⚠️ sin datos'} kcal/100g")
-
-    st.info("⚙️ Puedes actualizar los valores calóricos editando el archivo `calories.json` en la carpeta de tu proyecto.")
-
-# -----------------------------------------------------------
-# NOTA FINAL PARA EL DESARROLLO
-# -----------------------------------------------------------
-# Si se usa MobileNetV2 (versión final):
-# model = models.mobilenet_v2(weights=models.MobileNet_V2_Weights.IMAGENET1K_V1)
-# in_feat = model.classifier[1].in_features
-# model.classifier[1] = nn.Linear(in_feat, n_classes)
+elif menu == "📋 Lista de Alimentos":
+    st.title(f"📋 Catálogo ({len(labels)} clases)")
+    st.write("Lista completa de lo que el modelo puede detectar actualmente:")
+    
+    # Mostrar en una tabla limpia
+    data_rows = []
+    for lab in sorted(labels):
+        k = kcal_lookup(lab, cal_map)
+        val_str = f"{k:.0f}" if k > 0 else "-"
+        data_rows.append({"Alimento": lab.replace("_", " ").title(), "Kcal/100g": val_str})
+    
+    st.dataframe(data_rows, use_container_width=True)

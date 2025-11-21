@@ -1,4 +1,6 @@
-# Python
+# ======================
+# PYTHON BASICS
+# ======================
 __pycache__/
 *.pyc
 *.pyo
@@ -6,35 +8,55 @@ __pycache__/
 *.egg-info/
 .ipynb_checkpoints/
 
-# Entornos
+# ======================
+# ENTORNOS VIRTUALES
+# ======================
 venv/
+.env
 .env/
 .venv/
+env/
 
-# Modelos / datos locales
-*.pth
-*.pt
-*.joblib
-*.npz
+# ======================
+# IDEs Y CONFIGURACIÓN
+# ======================
+.vscode/
+.idea/
+*.sublime-workspace
 
-# Logs/temporal
+# ======================
+# ARCHIVOS TEMPORALES / LOGS
+# ======================
 *.log
 .DS_Store
 *.tmp
 
 # ======================
-# IGNORAR CONTENIDO DE DATA/
+# DATA (DATASET)
 # ======================
+# Ignorar todo el contenido de data (imágenes pesadas)
 data/*
+# Pero mantener la estructura de la carpeta (útil si alguien clona el repo)
 !data/.gitkeep
 
 # ======================
-# IGNORAR MODELOS/
+# MODELOS (MODELS) - CRÍTICO
 # ======================
-models/
+# 1. Ignorar todo dentro de la carpeta models
+models/*
+
+# 2. EXCEPCIÓN: CALORIES.JSON! (Tu trabajo manual)
+!models/calories.json
+
+# Seguridad extra para archivos pesados sueltos en cualquier lado
+*.pth
+*.pt
+*.joblib
+*.npz
+*.ckpt
 
 # ======================
-# IGNORAR RESULTADOS DE VALIDACIÓN CRUZADA
+# VALIDACIÓN CRUZADA
 # ======================
 cross_validation/results/*
 !cross_validation/notes.md
