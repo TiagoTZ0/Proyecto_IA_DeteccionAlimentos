@@ -1,4 +1,4 @@
-# 🍎 Food & Fruits AI – Clasificador de Alimentos y Calorías
+# 🍎 Food & Fruits AI – Clasificador de Alimentos y estimación de Calorías
 
 > **Sistema inteligente de reconocimiento visual de platos de comida y frutas, con estimación nutricional en tiempo real.**
 
