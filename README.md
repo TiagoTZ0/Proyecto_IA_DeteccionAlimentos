@@ -24,6 +24,7 @@ El modelo ha sido entrenado para reconocer aproximadamente **152 clases distinta
 ### 1. Platos Preparados (Food-101)
 Incluye 101 categorías de comida internacional, tales como:
 * `Pizza`, `Sushi`, `Hamburguesa`, `Tacos`, `Ramen`, `Paella`, `Lasagna`, `Ceviche`, `Steak`, `Risotto`, entre otros.
+De los cuales vamos a usar 51 categorias.
 
 ### 2. Frutas y Verduras (Subconjunto Fruits-262)
 Se integraron **51 clases específicas** seleccionadas del dataset Fruits-262, abarcando desde frutas de consumo diario hasta variedades exóticas y verduras comunes en la cocina.
