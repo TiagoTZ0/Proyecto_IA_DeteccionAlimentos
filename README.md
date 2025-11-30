@@ -127,10 +127,11 @@ Proyecto desarrollado para el curso de **Inteligencia Artificial: Principios y T
 **Universidad Privada Antenor Orrego (UPAO) – Facultad de Ingeniería**
 
 **Equipo de Desarrollo:**
+* Chavez, Jhon
+* Correa Asencio, Damer
+* Sanchez Sanchez, Bruno
 * Trigoso Zárate, Tiago André
 * Velásquez Góngora, Bruno Martín
-* Correa Asencio, Damer
-* Chavez, Jhon
 * Vergara Lopez, Junior
 ---
 
