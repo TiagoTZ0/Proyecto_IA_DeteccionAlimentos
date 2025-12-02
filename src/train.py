@@ -23,7 +23,7 @@ from tqdm import tqdm
 # 2. CONFIGURACIÓN DE RUTAS
 # ------------------------------------------------------
 PROJECT_DIR = root_path
-DATA_ROOT   = PROJECT_DIR / "data" / "food-101_fruits-262" 
+DATA_ROOT   = PROJECT_DIR / "data" / "food-101" 
 IMAGES_DIR  = DATA_ROOT / "images"
 META_DIR    = DATA_ROOT / "meta" # (Se ignorará en utils, pero lo dejamos definido)
 
