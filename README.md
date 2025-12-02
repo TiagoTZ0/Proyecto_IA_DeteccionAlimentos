@@ -1,4 +1,4 @@
-# 🍎 Food & Fruits AI – Clasificador de Alimentos y Calorías
+# 🍎 Food & Fruits AI – Clasificador de Alimentos y estimación de Calorías
 
 > **Sistema inteligente de reconocimiento visual de platos de comida y frutas, con estimación nutricional en tiempo real.**
 
@@ -24,9 +24,12 @@ El modelo ha sido entrenado para reconocer aproximadamente **152 clases distinta
 ### 1. Platos Preparados (Food-101)
 Incluye 101 categorías de comida internacional, tales como:
 * `Pizza`, `Sushi`, `Hamburguesa`, `Tacos`, `Ramen`, `Paella`, `Lasagna`, `Ceviche`, `Steak`, `Risotto`, entre otros.
+De los cuales vamos a usar 51 categorias.
+https://www.kaggle.com/datasets/dansbecker/food-101
 
 ### 2. Frutas y Verduras (Subconjunto Fruits-262)
 Se integraron **51 clases específicas** seleccionadas del dataset Fruits-262, abarcando desde frutas de consumo diario hasta variedades exóticas y verduras comunes en la cocina.
+https://drive.google.com/drive/folders/1SAESMfM1NgjSuvSZMDaMN-frkyMxWwqE?usp=drive_link
 
 **Algunas de las clases incluidas:**
 * **Frutas Comunes:** Manzana, Plátano, Naranja, Mandarina, Fresa, Uva, Piña, Sandía, Durazno, Limón.
@@ -126,10 +129,11 @@ Proyecto desarrollado para el curso de **Inteligencia Artificial: Principios y T
 **Universidad Privada Antenor Orrego (UPAO) – Facultad de Ingeniería**
 
 **Equipo de Desarrollo:**
+* Chavez, Jhon
+* Correa Asencio, Damer
+* Sanchez Sanchez, Bruno
 * Trigoso Zárate, Tiago André
 * Velásquez Góngora, Bruno Martín
-* Correa Asencio, Damer
-* Chavez, Jhon
 * Vergara Lopez, Junior
 ---
 
